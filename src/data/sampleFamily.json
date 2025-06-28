@@ -1,0 +1,108 @@
+{
+  "members": [
+    {
+      "id": "sample_member_1",
+      "name": "You",
+      "relationship": "self",
+      "age": 35,
+      "primaryVisits": 2,
+      "specialistVisits": 1,
+      "therapyVisits": 52,
+      "labWork": 1,
+      "imaging": 0,
+      "physicalTherapy": 0,
+      "medications": [
+        {
+          "id": "med_1",
+          "name": "Generic Medication",
+          "tier": 1,
+          "monthlyCost": 10,
+          "quantity": 1
+        },
+        {
+          "id": "med_2",
+          "name": "Zepbound",
+          "tier": 4,
+          "monthlyCost": 1200,
+          "quantity": 1
+        }
+      ],
+      "isActive": true
+    },
+    {
+      "id": "sample_member_2",
+      "name": "Spouse",
+      "relationship": "spouse",
+      "age": 33,
+      "primaryVisits": 9,
+      "specialistVisits": 3,
+      "therapyVisits": 104,
+      "labWork": 4,
+      "imaging": 1,
+      "physicalTherapy": 20,
+      "medications": [
+        {
+          "id": "med_3",
+          "name": "Generic Medication",
+          "tier": 1,
+          "monthlyCost": 10,
+          "quantity": 1
+        },
+        {
+          "id": "med_4",
+          "name": "Mid-Tier Medication",
+          "tier": 2,
+          "monthlyCost": 50,
+          "quantity": 1
+        },
+        {
+          "id": "med_5",
+          "name": "Wegovy",
+          "tier": 4,
+          "monthlyCost": 1200,
+          "quantity": 1
+        }
+      ],
+      "isActive": true
+    },
+    {
+      "id": "sample_member_3",
+      "name": "Child 1",
+      "relationship": "child",
+      "age": 8,
+      "primaryVisits": 4,
+      "specialistVisits": 1,
+      "therapyVisits": 52,
+      "labWork": 1,
+      "imaging": 0,
+      "physicalTherapy": 0,
+      "medications": [],
+      "isActive": true
+    },
+    {
+      "id": "sample_member_4",
+      "name": "Child 2",
+      "relationship": "child",
+      "age": 5,
+      "primaryVisits": 1,
+      "specialistVisits": 0,
+      "therapyVisits": 0,
+      "labWork": 0,
+      "imaging": 0,
+      "physicalTherapy": 0,
+      "medications": [],
+      "isActive": false
+    }
+  ],
+  "serviceCosts": {
+    "primaryVisit": 150,
+    "specialistVisit": 200,
+    "therapySession": 130,
+    "labWork": 100,
+    "basicImaging": 300,
+    "advancedImaging": 1200,
+    "physicalTherapy": 100,
+    "emergencyRoom": 1500,
+    "urgentCare": 200
+  }
+}
