@@ -2,6 +2,7 @@
 export class ServerlessLLMClient {
   constructor() {
     this.baseURL = window.location.origin; // Use same domain for API calls
+    this.apiPrefix = '/insurance/api'; // Match nginx location path
     this.retryAttempts = 3;
     this.retryDelay = 1000; // 1 second base delay
   }
@@ -9,7 +10,7 @@ export class ServerlessLLMClient {
   async analyzePDF(pdfText, options = {}) {
     const { provider = 'openai', showProgress = null } = options;
     
-    return await this.makeRequest('/api/analyze-pdf', {
+    return await this.makeRequest(`${this.apiPrefix}/analyze-pdf`, {
       pdfText,
       provider
     }, {
@@ -22,7 +23,7 @@ export class ServerlessLLMClient {
   async generateInsights(plans, familyData, calculationResults, options = {}) {
     const { provider = 'openai', showProgress = null } = options;
     
-    return await this.makeRequest('/api/generate-insights', {
+    return await this.makeRequest(`${this.apiPrefix}/generate-insights`, {
       plans,
       familyData,
       calculationResults,
@@ -37,7 +38,7 @@ export class ServerlessLLMClient {
   async generateSummary(planData, options = {}) {
     const { provider = 'openai', showProgress = null } = options;
     
-    return await this.makeRequest('/api/generate-summary', {
+    return await this.makeRequest(`${this.apiPrefix}/generate-summary`, {
       planData,
       provider
     }, {
