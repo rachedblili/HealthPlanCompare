@@ -208,29 +208,89 @@ export class PDFAnalyzer {
       return { ...regexData, extractionMethod: 'regex' };
     }
 
-    // Combine both, preferring LLM data but using regex as fallback
+    // Start with regex data as base
     const combined = { ...regexData };
     
-    // Override with LLM data where available and valid
-    Object.keys(llmData).forEach(key => {
-      if (llmData[key] !== null && llmData[key] !== undefined && llmData[key] !== '') {
-        // Handle field name mapping - LLM uses 'planName' but we store as 'name'
-        const targetKey = key === 'planName' ? 'name' : key;
-        const regexFallback = targetKey === 'name' ? regexData.name : regexData[key];
-        
-        const cleanedValue = this.validateAndCleanField(key, llmData[key], regexFallback);
-        if (cleanedValue !== null) {
-          combined[targetKey] = cleanedValue;
-        }
-        // If validation fails, keep the regex value
+    // Map LLM nested structure to flat structure
+    if (llmData.planName) {
+      combined.name = llmData.planName;
+    }
+    
+    if (llmData.planType) {
+      combined.planType = llmData.planType;
+    }
+    
+    // Map nested deductible structure
+    if (llmData.deductible) {
+      if (llmData.deductible.individual !== null) {
+        combined.individualDeductible = llmData.deductible.individual;
       }
-    });
+      if (llmData.deductible.family !== null) {
+        combined.familyDeductible = llmData.deductible.family;
+      }
+    }
+    
+    // Map nested out-of-pocket max structure
+    if (llmData.outOfPocketMax) {
+      if (llmData.outOfPocketMax.individual !== null) {
+        combined.individualOOPMax = llmData.outOfPocketMax.individual;
+      }
+      if (llmData.outOfPocketMax.family !== null) {
+        combined.familyOOPMax = llmData.outOfPocketMax.family;
+      }
+    }
+    
+    // Map nested copays structure
+    if (llmData.copays) {
+      if (llmData.copays.primaryCare !== null) {
+        combined.primaryCopay = llmData.copays.primaryCare;
+      }
+      if (llmData.copays.specialist !== null) {
+        combined.specialistCopay = llmData.copays.specialist;
+      }
+      if (llmData.copays.urgentCare !== null) {
+        combined.urgentCareCopay = llmData.copays.urgentCare;
+      }
+      if (llmData.copays.emergencyRoom !== null) {
+        combined.emergencyRoomCopay = llmData.copays.emergencyRoom;
+      }
+    }
+    
+    // Map nested coinsurance structure
+    if (llmData.coinsurance) {
+      if (llmData.coinsurance.medical !== null) {
+        combined.coinsurance = { 
+          ...combined.coinsurance,
+          medical: llmData.coinsurance.medical 
+        };
+      }
+      if (llmData.coinsurance.prescription !== null) {
+        combined.coinsurance = { 
+          ...combined.coinsurance,
+          prescription: llmData.coinsurance.prescription 
+        };
+      }
+    }
+    
+    // Map nested prescription tiers structure
+    if (llmData.prescriptionTiers) {
+      if (llmData.prescriptionTiers.tier1 !== null) {
+        combined.tier1DrugCost = llmData.prescriptionTiers.tier1;
+      }
+      if (llmData.prescriptionTiers.tier2 !== null) {
+        combined.tier2DrugCost = llmData.prescriptionTiers.tier2;
+      }
+      if (llmData.prescriptionTiers.tier3 !== null) {
+        combined.tier3DrugCost = llmData.prescriptionTiers.tier3;
+      }
+      if (llmData.prescriptionTiers.tier4 !== null) {
+        combined.specialtyDrugCost = llmData.prescriptionTiers.tier4;
+      }
+    }
 
     // Add extraction metadata
     combined.extractionMethod = 'hybrid';
-    combined.llmQuality = llmData.extractionQuality || 'UNKNOWN';
-    combined.llmNotes = llmData.notes;
-    combined.llmMissingFields = llmData.missingFields;
+    combined.llmQuality = 'HIGH';  // Since LLM data was successfully parsed
 
     return combined;
   }
