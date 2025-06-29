@@ -88,6 +88,14 @@ Extract exact dollar amounts and percentages. If information is missing, use nul
 SBC Document Text:
 ${pdfText}`;
 
+    // Debug logging
+    console.log('Environment check:', {
+      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
+      keyLength: process.env.OPENAI_API_KEY?.length,
+      model: process.env.DEFAULT_OPENAI_MODEL,
+      provider
+    });
+
     // Call LLM API
     const analysis = await callLLMAPI(provider, prompt);
     
