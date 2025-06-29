@@ -73,6 +73,7 @@ export class ServerlessLLMClient {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          console.log('🚨 API Error Response:', { status: response.status, errorData });
           throw new ServerlessError(response.status, errorData, operation);
         }
 
