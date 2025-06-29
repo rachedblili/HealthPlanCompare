@@ -272,20 +272,29 @@ export class PDFAnalyzer {
       }
     }
     
-    // Map nested prescription tiers structure
+    // Map nested prescription tiers structure with type information
     if (llmData.prescriptionTiers) {
-      if (llmData.prescriptionTiers.tier1 !== null) {
-        combined.tier1DrugCost = llmData.prescriptionTiers.tier1;
-      }
-      if (llmData.prescriptionTiers.tier2 !== null) {
-        combined.tier2DrugCost = llmData.prescriptionTiers.tier2;
-      }
-      if (llmData.prescriptionTiers.tier3 !== null) {
-        combined.tier3DrugCost = llmData.prescriptionTiers.tier3;
-      }
-      if (llmData.prescriptionTiers.tier4 !== null) {
-        combined.specialtyDrugCost = llmData.prescriptionTiers.tier4;
-      }
+      const tierMapping = {
+        tier1: 'tier1DrugCost',
+        tier2: 'tier2DrugCost', 
+        tier3: 'tier3DrugCost',
+        tier4: 'specialtyDrugCost'
+      };
+      
+      Object.entries(tierMapping).forEach(([tierKey, combinedKey]) => {
+        const tierData = llmData.prescriptionTiers[tierKey];
+        if (tierData !== null) {
+          if (typeof tierData === 'object' && tierData.type && tierData.value !== null) {
+            // New structured format: {type: "copay|coinsurance", value: number}
+            combined[combinedKey] = tierData.value;
+            combined[`${combinedKey}Type`] = tierData.type;
+          } else if (typeof tierData === 'number') {
+            // Legacy format: just a number (fallback)
+            combined[combinedKey] = tierData;
+            combined[`${combinedKey}Type`] = tierData < 1 ? 'coinsurance' : 'copay';
+          }
+        }
+      });
     }
 
     // Add extraction metadata

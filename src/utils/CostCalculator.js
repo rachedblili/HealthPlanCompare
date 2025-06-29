@@ -347,7 +347,7 @@ export class CostCalculator {
     return copayMap[serviceType] || 0;
   }
 
-  // Calculate tier-based medication cost
+  // Calculate tier-based medication cost with proper type handling
   calculateTierCost(plan, tier, cost) {
     // Handle $0 cost medications
     if (cost === 0) {
@@ -363,13 +363,25 @@ export class CostCalculator {
 
     const tierCostKey = tierKeys[tier] || 'tier1DrugCost';
     const tierCost = plan[tierCostKey] || 0;
-
-    if (typeof tierCost === 'number' && tierCost < 1) {
-      // Percentage coinsurance (HSA plans)
-      return cost * tierCost;
-    } else {
-      // Fixed copay (PPO plans) - but only for actual cost
+    const tierCostType = plan[`${tierCostKey}Type`];
+    
+    // Use explicit type information if available
+    if (tierCostType === 'coinsurance') {
+      // Percentage coinsurance - ensure proper decimal format
+      const coinsuranceRate = tierCost > 1 ? tierCost / 100 : tierCost; // Handle both 20 and 0.2
+      return cost * coinsuranceRate;
+    } else if (tierCostType === 'copay') {
+      // Fixed copay - never more than actual drug cost
       return Math.min(tierCost, cost);
+    } else {
+      // Legacy fallback - use old heuristic (for plans without type info)
+      if (typeof tierCost === 'number' && tierCost < 1) {
+        // Percentage coinsurance (HSA plans)
+        return cost * tierCost;
+      } else {
+        // Fixed copay (PPO plans) - but only for actual cost
+        return Math.min(tierCost, cost);
+      }
     }
   }
 

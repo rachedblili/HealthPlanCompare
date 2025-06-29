@@ -76,14 +76,18 @@ export default async function handler(req, res) {
     "prescription": number
   },
   "prescriptionTiers": {
-    "tier1": number,
-    "tier2": number,
-    "tier3": number,
-    "tier4": number
+    "tier1": {"type": "copay|coinsurance", "value": number},
+    "tier2": {"type": "copay|coinsurance", "value": number},
+    "tier3": {"type": "copay|coinsurance", "value": number},
+    "tier4": {"type": "copay|coinsurance", "value": number}
   }
 }
 
-Extract exact dollar amounts and percentages. If information is missing, use null.
+For prescription tiers:
+- Use "copay" type for fixed dollar amounts (e.g., $50 copay) 
+- Use "coinsurance" type for percentages (e.g., 20% coinsurance)
+- For percentages, use decimal format (0.2 for 20%)
+- If information is missing, use null.
 
 SBC Document Text:
 ${pdfText}`;
