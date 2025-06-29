@@ -3,8 +3,6 @@ import { EventEmitter } from '../utils/EventEmitter.js';
 import { StorageManager } from '../utils/StorageManager.js';
 import { PDFAnalyzer } from '../utils/PDFAnalyzer.js';
 import { PlanSearchAgent } from '../utils/PlanSearchAgent.js';
-import { LLMAssistant } from '../utils/LLMAssistant.js';
-import { EnvConfig } from '../utils/EnvConfig.js';
 import { WarningBanner } from './WarningBanner.js';
 import { SBCEducationModal } from './SBCEducationModal.js';
 
@@ -99,8 +97,8 @@ export class PlanManager extends EventEmitter {
     console.log(`🔄 Starting PDF processing for: ${file.name}`);
     this.setProcessingState(true, `Starting analysis of ${file.name}...`);
     
-    // Offer LLM configuration if this is the first upload and no LLM is configured
-    if (!this.hasOfferedLLM && EnvConfig.shouldAutoOfferLLM() && !LLMAssistant.checkExistingConfig() && !EnvConfig.hasSystemApiKeys()) {
+    // LLM functionality moved to server-side
+    if (false) {
       this.hasOfferedLLM = true;
       setTimeout(async () => {
         const useEnhanced = await this.offerEnhancedAnalysis();
@@ -757,7 +755,8 @@ export class PlanManager extends EventEmitter {
       modal.addEventListener('click', async (e) => {
         if (e.target.matches('[data-action="setup-ai"]')) {
           modal.remove();
-          const config = await LLMAssistant.showConfigurationModal();
+          // LLM configuration removed - using server-side AI
+          const config = null;
           if (config) {
             // Re-initialize the PDF analyzer with new config
             this.pdfAnalyzer.initializeLLM();

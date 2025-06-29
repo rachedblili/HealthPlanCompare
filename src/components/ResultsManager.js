@@ -2,7 +2,6 @@
 import { EventEmitter } from '../utils/EventEmitter.js';
 import { ChartManager } from './ChartManager.js';
 import { DataManager } from '../utils/DataManager.js';
-import { LLMAssistant } from '../utils/LLMAssistant.js';
 import { serverlessLLM } from '../utils/ServerlessLLMClient.js';
 import { WarningBanner } from './WarningBanner.js';
 
@@ -12,19 +11,11 @@ export class ResultsManager extends EventEmitter {
     this.results = null;
     this.currentView = 'summary'; // 'summary', 'detailed', 'scenarios', 'charts'
     this.chartManager = new ChartManager();
-    this.llmAssistant = new LLMAssistant();
     this.llmInsights = null;
     this.calculator = null; // Will be set by App.js
-    this.initializeLLM();
+    // LLM functionality moved to server-side
   }
 
-  initializeLLM() {
-    // Check for existing LLM configuration
-    const existingConfig = LLMAssistant.checkExistingConfig();
-    if (existingConfig) {
-      this.llmAssistant.configure(existingConfig.apiKey, existingConfig.provider);
-    }
-  }
 
   async init() {
     await this.chartManager.init();
@@ -324,23 +315,13 @@ export class ResultsManager extends EventEmitter {
           } catch (error) {
             console.warn('🤖 Serverless insights failed, trying fallback:', error.message);
             
-            // Fall back to old LLM assistant
-            if (this.llmAssistant.isAvailable()) {
-              try {
-                this.llmInsights = await this.llmAssistant.generateComparisonInsights(this.results, familyData);
-                if (this.llmInsights) {
-                  console.log('✅ Fallback AI insights generated');
-                }
-              } catch (fallbackError) {
-                console.error('❌ Both serverless and fallback insights failed:', fallbackError);
-                if (progressContainer) {
-                  progressContainer.innerHTML = `
-                    <div class="p-4 bg-yellow-50 rounded-lg">
-                      <span class="text-yellow-700">AI insights are temporarily unavailable. Please try again later.</span>
-                    </div>
-                  `;
-                }
-              }
+            console.error('❌ Serverless insights failed:', error);
+            if (progressContainer) {
+              progressContainer.innerHTML = `
+                <div class="p-4 bg-yellow-50 rounded-lg">
+                  <span class="text-yellow-700">AI insights are temporarily unavailable. Please try again later.</span>
+                </div>
+              `;
             }
           }
           
@@ -502,13 +483,12 @@ export class ResultsManager extends EventEmitter {
 
   renderAIInsights() {
     if (!this.llmInsights) {
-      return this.llmAssistant.isAvailable() ? 
-        `<div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div class="flex items-center">
-            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
-            <span class="text-sm text-blue-700">🤖 Generating AI insights for your comparison...</span>
-          </div>
-        </div>` : '';
+      return `<div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="flex items-center">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+          <span class="text-sm text-blue-700">🤖 Generating AI insights for your comparison...</span>
+        </div>
+      </div>`;
     }
 
     return `

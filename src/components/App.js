@@ -8,7 +8,6 @@ import { WarningBanner } from './WarningBanner.js';
 import { CostCalculator } from '../utils/CostCalculator.js';
 import { EventEmitter } from '../utils/EventEmitter.js';
 import { DataManager } from '../utils/DataManager.js';
-import { EnvConfig } from '../utils/EnvConfig.js';
 
 export class App extends EventEmitter {
   constructor() {
@@ -58,7 +57,7 @@ export class App extends EventEmitter {
     
     // Log configuration
     try {
-      await EnvConfig.logConfig();
+      console.log('App components initialized');
     } catch (error) {
       console.log('Could not load configuration:', error.message);
     }

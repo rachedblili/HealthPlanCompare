@@ -1,22 +1,12 @@
 // PDF Analysis utility for extracting health plan data from SBC documents
-import { LLMAssistant } from './LLMAssistant.js';
 import { serverlessLLM } from './ServerlessLLMClient.js';
 
 export class PDFAnalyzer {
   constructor() {
     this.isInitialized = false;
-    this.llmAssistant = new LLMAssistant();
-    this.initializeLLM();
+    // LLM functionality moved to server-side
   }
 
-  initializeLLM() {
-    // Check for existing LLM configuration
-    const existingConfig = LLMAssistant.checkExistingConfig();
-    if (existingConfig) {
-      this.llmAssistant.configure(existingConfig.apiKey, existingConfig.provider);
-      console.log('LLM assistant configured with existing credentials');
-    }
-  }
 
   async init() {
     if (this.isInitialized) return;
@@ -162,18 +152,7 @@ export class PDFAnalyzer {
     } catch (error) {
       console.warn('🤖 Serverless LLM analysis failed, falling back to regex:', error.message);
       
-      // Fall back to old LLM assistant if serverless fails
-      if (this.llmAssistant.isAvailable()) {
-        console.log('🔄 Trying fallback LLM assistant...');
-        try {
-          llmData = await this.llmAssistant.analyzeSBCText(text, fileName);
-          if (llmData) {
-            console.log('✅ Fallback LLM analysis successful');
-          }
-        } catch (fallbackError) {
-          console.warn('🤖 Fallback LLM also failed:', fallbackError);
-        }
-      }
+      console.warn('🤖 Serverless LLM analysis failed, using regex only:', error.message);
     }
 
     // Always run regex-based extraction as backup/validation
@@ -341,12 +320,7 @@ export class PDFAnalyzer {
   }
 
   async offerLLMConfiguration() {
-    // Show configuration modal to user
-    const config = await LLMAssistant.showConfigurationModal();
-    if (config) {
-      this.llmAssistant.configure(config.apiKey, config.provider);
-      return true;
-    }
+    // LLM configuration moved to server-side
     return false;
   }
 
