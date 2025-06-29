@@ -148,6 +148,9 @@ export class PDFAnalyzer {
       if (result && result.success) {
         llmData = result.data;
         console.log('✅ Serverless LLM analysis successful');
+        console.log('🔍 LLM extracted data:', llmData);
+      } else {
+        console.log('❌ LLM analysis failed or returned no data:', result);
       }
     } catch (error) {
       console.warn('🤖 Serverless LLM analysis failed, falling back to regex:', error.message);
@@ -159,8 +162,15 @@ export class PDFAnalyzer {
     console.log('🔍 Running regex-based extraction...');
     regexData = this.extractWithRegex(text);
 
+    // Debug logging before combining
+    console.log('🔍 About to combine data:');
+    console.log('  - llmData:', llmData);
+    console.log('  - regexData preview:', { name: regexData?.name, planType: regexData?.planType });
+    
     // Combine results, preferring LLM data but filling gaps with regex
     const combinedData = this.combineExtractionResults(llmData, regexData);
+    
+    console.log('🔍 Combined data result:', combinedData);
     
     console.log('✅ SBC parsing complete');
     return this.cleanPlanData(combinedData);
