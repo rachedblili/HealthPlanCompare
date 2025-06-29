@@ -1,5 +1,6 @@
 // Rate limiting utilities for Vercel serverless functions
-// Uses Vercel KV (Redis) for distributed rate limiting
+// Uses file-based storage in /tmp directory for persistence
+import { promises as fs } from 'fs';
 
 // Rate limiting configuration
 const RATE_LIMITS = {
@@ -135,58 +136,90 @@ export async function recordUsage(clientIP, operation) {
   }
 }
 
-// Simple in-memory store (replace with Vercel KV in production)
-const memoryStore = new Map();
+
+const RATE_LIMIT_FILE = '/tmp/rate_limits.json';
+
+// File-based persistent storage using /tmp directory
+async function loadRateLimitData() {
+  try {
+    const data = await fs.readFile(RATE_LIMIT_FILE, 'utf8');
+    const parsed = JSON.parse(data);
+    
+    // Clean expired entries
+    const now = Date.now();
+    const cleaned = {};
+    for (const [key, entry] of Object.entries(parsed)) {
+      if (entry.expires > now) {
+        cleaned[key] = entry;
+      }
+    }
+    
+    return cleaned;
+  } catch (error) {
+    // File doesn't exist or is corrupted, return empty object
+    return {};
+  }
+}
+
+async function saveRateLimitData(data) {
+  try {
+    await fs.writeFile(RATE_LIMIT_FILE, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Failed to save rate limit data:', error);
+    // Don't throw - we don't want to block requests due to storage issues
+  }
+}
 
 async function getCurrentUsage(hourlyKey, dailyKey, globalDailyKey) {
-  // In production, replace with actual KV store calls
-  return {
-    hourly: memoryStore.get(hourlyKey) || 0,
-    dailyIP: memoryStore.get(dailyKey) || 0,
-    globalDaily: memoryStore.get(globalDailyKey) || 0
-  };
+  try {
+    const data = await loadRateLimitData();
+    
+    return {
+      hourly: data[hourlyKey]?.count || 0,
+      dailyIP: data[dailyKey]?.count || 0,
+      globalDaily: data[globalDailyKey]?.count || 0
+    };
+  } catch (error) {
+    console.error('Failed to get current usage:', error);
+    // Return zeros on error to be safe
+    return { hourly: 0, dailyIP: 0, globalDaily: 0 };
+  }
 }
 
 async function incrementUsage(key, ttlMs) {
-  const current = memoryStore.get(key) || 0;
-  memoryStore.set(key, current + 1);
-  
-  // Set expiration (in production, KV store would handle this)
-  setTimeout(() => {
-    memoryStore.delete(key);
-  }, ttlMs);
+  try {
+    const data = await loadRateLimitData();
+    const expires = Date.now() + ttlMs;
+    
+    data[key] = {
+      count: (data[key]?.count || 0) + 1,
+      expires: expires
+    };
+    
+    await saveRateLimitData(data);
+  } catch (error) {
+    console.error('Failed to increment usage:', error);
+    // Don't throw - we don't want to block requests due to storage issues
+  }
 }
 
 async function incrementDailyUsage(key, cost, ttlMs) {
-  const current = memoryStore.get(key) || 0;
-  memoryStore.set(key, current + cost);
-  
-  // Set expiration
-  setTimeout(() => {
-    memoryStore.delete(key);
-  }, ttlMs);
+  try {
+    const data = await loadRateLimitData();
+    const expires = Date.now() + ttlMs;
+    
+    data[key] = {
+      count: (data[key]?.count || 0) + cost,
+      expires: expires
+    };
+    
+    await saveRateLimitData(data);
+  } catch (error) {
+    console.error('Failed to increment daily usage:', error);
+    // Don't throw - we don't want to block requests due to storage issues
+  }
 }
 
-// Production implementation would use Vercel KV:
-/*
-import { kv } from '@vercel/kv';
-
-async function getCurrentUsage(hourlyKey, dailyKey, globalDailyKey) {
-  const [hourly, dailyIP, globalDaily] = await Promise.all([
-    kv.get(hourlyKey),
-    kv.get(dailyKey), 
-    kv.get(globalDailyKey)
-  ]);
-  
-  return {
-    hourly: hourly || 0,
-    dailyIP: dailyIP || 0,
-    globalDaily: globalDaily || 0
-  };
-}
-
-async function incrementUsage(key, ttlMs) {
-  await kv.incr(key);
-  await kv.expire(key, Math.ceil(ttlMs / 1000));
-}
-*/
+// File-based storage provides persistence across serverless function restarts
+// Data stored in /tmp directory expires when the serverless environment is recycled
+// This provides much better protection than in-memory storage
