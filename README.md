@@ -28,8 +28,8 @@ A modern, open-source web application for comparing health insurance plans based
 ### Option 1: Simple Local Server
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/health-plan-comparison-tool.git
-cd health-plan-comparison-tool
+git clone https://github.com/rachedblili/HealthPlanCompare.git
+cd HealthPlanCompare
 
 # Start a local server
 python -m http.server 8000
@@ -185,8 +185,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: Check this README and inline help
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/your-username/health-plan-comparison-tool/issues)
-- **Discussions**: Join conversations on [GitHub Discussions](https://github.com/your-username/health-plan-comparison-tool/discussions)
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/rachedblili/HealthPlanCompare/issues)
+- **Discussions**: Join conversations on [GitHub Discussions](https://github.com/rachedblili/HealthPlanCompare/discussions)
 
 ## 🙏 Acknowledgments
 

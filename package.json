@@ -17,7 +17,7 @@
     "healthcare",
     "sbc-analysis"
   ],
-  "author": "Your Name",
+  "author": "Rached Blili",
   "license": "MIT",
   "devDependencies": {
     "vercel": "^32.0.0"
