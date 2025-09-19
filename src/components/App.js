@@ -117,6 +117,10 @@ export class App extends EventEmitter {
         callback(this.familyManager.getFamilyData());
       });
       
+      this.resultsManager.on('requestPlanData', (callback) => {
+        callback(this.planManager.getPlans());
+      });
+      
       // Mark initialization complete
       this.isInitializing = false;
       console.log('Initialization complete, events enabled');

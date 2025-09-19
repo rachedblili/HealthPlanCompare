@@ -14,20 +14,26 @@ export class CostCalculator {
       throw new Error('No family data provided for calculation');
     }
 
+    // Validate and normalize plan data
+    const validatedPlans = plans.map(plan => this.validateAndNormalizePlan(plan));
+    
+    // Validate family data
+    const validatedFamilyData = this.validateFamilyData(familyData);
+
     // Phase 1: Generate plan-agnostic usage timeline
-    const usageTable = this.generateFamilyUsageTimeline(familyData.members, familyData.serviceCosts);
+    const usageTable = this.generateFamilyUsageTimeline(validatedFamilyData.members, validatedFamilyData.serviceCosts);
 
     // Phase 2: Apply each plan's rules to the usage table
     const planProgressions = {};
     const results = {};
 
-    for (const plan of plans) {
+    for (const plan of validatedPlans) {
       try {
-        const progression = this.applyPlanRules(plan, usageTable, familyData.members);
+        const progression = this.applyPlanRules(plan, usageTable, validatedFamilyData.members);
         planProgressions[plan.id] = progression;
         
         // Generate result summary from progression
-        results[plan.id] = this.generatePlanResult(plan, progression, familyData.members);
+        results[plan.id] = this.generatePlanResult(plan, progression, validatedFamilyData.members);
       } catch (error) {
         console.error(`Error calculating plan ${plan.id}:`, error);
         results[plan.id] = this.createErrorResult(plan, error);
@@ -773,5 +779,173 @@ export class CostCalculator {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount || 0);
+  }
+
+  // Validate and normalize plan data - handle valid variations, fail on corruption
+  validateAndNormalizePlan(plan) {
+    if (!plan || typeof plan !== 'object') {
+      throw new Error('Plan data must be an object');
+    }
+
+    if (!plan.id) {
+      throw new Error(`Plan missing required ID field: ${JSON.stringify(plan)}`);
+    }
+
+    if (!plan.name) {
+      throw new Error(`Plan ${plan.id} missing required name field`);
+    }
+
+    // Create normalized plan with required fields
+    const normalized = {
+      id: plan.id,
+      name: plan.name,
+      insurer: plan.insurer || 'Unknown',
+      planType: plan.planType || 'PPO'
+    };
+
+    // Validate and normalize numeric fields
+    const numericFields = [
+      'monthlyPremium', 'spousePremium', 'familyPremium',
+      'individualDeductible', 'familyDeductible', 
+      'individualOOPMax', 'familyOOPMax',
+      'primaryCopay', 'specialistCopay',
+      'rxDeductible', 'tier1DrugCost', 'tier2DrugCost', 
+      'tier3DrugCost', 'specialtyDrugCost'
+    ];
+
+    for (const field of numericFields) {
+      if (plan[field] !== undefined && plan[field] !== null && plan[field] !== '') {
+        const value = parseFloat(plan[field]);
+        if (isNaN(value)) {
+          throw new Error(`Plan ${plan.id}: Invalid numeric value for ${field}: ${plan[field]}`);
+        }
+        if (value < 0) {
+          console.warn(`⚠️ Plan ${plan.id}: Negative value for ${field}: ${value}`);
+        }
+        normalized[field] = value;
+      } else {
+        normalized[field] = 0;
+      }
+    }
+
+    // Handle coinsurance - support both simple number and object structure
+    if (plan.coinsurance !== undefined && plan.coinsurance !== null) {
+      if (typeof plan.coinsurance === 'number') {
+        // Simple number format
+        normalized.coinsurance = plan.coinsurance;
+      } else if (typeof plan.coinsurance === 'object' && plan.coinsurance.medical !== undefined) {
+        // Object format with medical field
+        const medicalCoins = parseFloat(plan.coinsurance.medical);
+        if (isNaN(medicalCoins)) {
+          throw new Error(`Plan ${plan.id}: Invalid coinsurance.medical value: ${plan.coinsurance.medical}`);
+        }
+        normalized.coinsurance = medicalCoins;
+        console.log(`📋 Plan ${plan.id}: Using coinsurance.medical (${medicalCoins}) from object structure`);
+      } else {
+        throw new Error(`Plan ${plan.id}: Invalid coinsurance structure: ${JSON.stringify(plan.coinsurance)}`);
+      }
+    } else {
+      normalized.coinsurance = 0;
+    }
+
+    // Preserve drug cost type information if available
+    const typeFields = ['tier1DrugCostType', 'tier2DrugCostType', 'tier3DrugCostType', 'specialtyDrugCostType'];
+    for (const field of typeFields) {
+      if (plan[field]) {
+        normalized[field] = plan[field];
+      }
+    }
+
+    // Extract rxDeductible from networkType description if missing but described
+    if (!normalized.rxDeductible && plan.networkType && typeof plan.networkType === 'string') {
+      const rxMatch = plan.networkType.match(/prescription drugs - \$(\d+)/i);
+      if (rxMatch) {
+        normalized.rxDeductible = parseFloat(rxMatch[1]);
+        console.log(`📋 Plan ${plan.id}: Extracted rxDeductible from description: $${normalized.rxDeductible}`);
+      }
+    }
+
+    return normalized;
+  }
+
+  // Validate family data - fail loudly on corruption
+  validateFamilyData(familyData) {
+    if (!familyData.members || !Array.isArray(familyData.members)) {
+      throw new Error('Family data must have a members array');
+    }
+
+    const validatedMembers = familyData.members.map((member, index) => {
+      if (!member || typeof member !== 'object') {
+        throw new Error(`Family member ${index} is not a valid object`);
+      }
+
+      if (!member.id) {
+        throw new Error(`Family member ${index} missing required ID`);
+      }
+
+      // Check for corruption: field names like "medications[0].name" at member level
+      const suspiciousFields = Object.keys(member).filter(key => key.includes('[') && key.includes(']'));
+      if (suspiciousFields.length > 0) {
+        throw new Error(`🚨 CORRUPT DATA DETECTED in member ${member.name || member.id}: Found corrupted fields: ${suspiciousFields.join(', ')}. This indicates a data storage bug that must be fixed at the source.`);
+      }
+
+      const validated = {
+        id: member.id,
+        name: member.name || 'Unknown',
+        relationship: member.relationship || 'other',
+        age: parseInt(member.age) || 35,
+        isActive: member.isActive !== false,
+        medications: []
+      };
+
+      // Validate numeric usage fields
+      const usageFields = ['primaryVisits', 'specialistVisits', 'therapyVisits', 'labWork', 'imaging', 'physicalTherapy'];
+      for (const field of usageFields) {
+        const value = parseInt(member[field]);
+        if (isNaN(value) || value < 0) {
+          console.warn(`⚠️ Member ${member.name}: Invalid ${field} value: ${member[field]}, using 0`);
+          validated[field] = 0;
+        } else {
+          validated[field] = value;
+        }
+      }
+
+      // Validate medications
+      if (member.medications && Array.isArray(member.medications)) {
+        validated.medications = member.medications.map((med, medIndex) => {
+          if (!med || typeof med !== 'object') {
+            throw new Error(`Member ${member.name}: Medication ${medIndex} is not a valid object`);
+          }
+
+          const validatedMed = {
+            id: med.id || `med_${Date.now()}_${medIndex}`,
+            name: med.name || '',
+            tier: parseInt(med.tier) || 1,
+            monthlyCost: parseFloat(med.monthlyCost) || 0,
+            quantity: parseInt(med.quantity) || 1
+          };
+
+          // Validate medication values
+          if (validatedMed.tier < 1 || validatedMed.tier > 4) {
+            console.warn(`⚠️ Member ${member.name}: Invalid medication tier ${validatedMed.tier}, using tier 1`);
+            validatedMed.tier = 1;
+          }
+
+          if (validatedMed.monthlyCost < 0) {
+            console.warn(`⚠️ Member ${member.name}: Negative medication cost ${validatedMed.monthlyCost}, using 0`);
+            validatedMed.monthlyCost = 0;
+          }
+
+          return validatedMed;
+        });
+      }
+
+      return validated;
+    });
+
+    return {
+      members: validatedMembers,
+      serviceCosts: familyData.serviceCosts || {}
+    };
   }
 }

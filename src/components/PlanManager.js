@@ -5,6 +5,7 @@ import { PDFAnalyzer } from '../utils/PDFAnalyzer.js';
 import { PlanSearchAgent } from '../utils/PlanSearchAgent.js';
 import { WarningBanner } from './WarningBanner.js';
 import { SBCEducationModal } from './SBCEducationModal.js';
+import { EnvConfig } from '../utils/EnvConfig.js';
 
 export class PlanManager extends EventEmitter {
   constructor() {
@@ -97,8 +98,9 @@ export class PlanManager extends EventEmitter {
     console.log(`🔄 Starting PDF processing for: ${file.name}`);
     this.setProcessingState(true, `Starting analysis of ${file.name}...`);
     
-    // LLM functionality moved to server-side
-    if (false) {
+    // Show LLM configuration UI in local mode only
+    const shouldOfferLocalLLM = await EnvConfig.isLocalLLMEnabled();
+    if (shouldOfferLocalLLM && !this.hasOfferedLLM) {
       this.hasOfferedLLM = true;
       setTimeout(async () => {
         const useEnhanced = await this.offerEnhancedAnalysis();
@@ -517,8 +519,9 @@ export class PlanManager extends EventEmitter {
                 <div class="relative">
                   <span class="absolute left-3 top-2 text-gray-500">$</span>
                   <input type="number" name="specialtyDrugCost" value="${planData.specialtyDrugCost || ''}" 
-                         class="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2" step="25" min="0">
+                         class="w-full border border-gray-300 rounded-md pl-8 pr-3 py-2" step="0.01" min="0">
                 </div>
+                <p class="text-xs text-gray-500 mt-1">Enter dollar amount for copay or decimal for coinsurance (e.g., 0.25 for 25%)</p>
               </div>
                   </div>
                 </div>
@@ -734,10 +737,17 @@ export class PlanManager extends EventEmitter {
             </div>
           </div>
 
+          <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-sm text-red-700">
+              <strong>⚠️ Local Development Mode:</strong> This configuration will expose API keys in your browser. 
+              Only use for local development, never on deployed websites.
+            </p>
+          </div>
+
           <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <p class="text-sm text-gray-700">
               <strong>Your choice:</strong> Requires your own OpenAI or Anthropic API key. 
-              Keys are stored locally and never sent to our servers.
+              Keys are stored locally in browser storage.
             </p>
           </div>
 
@@ -755,11 +765,9 @@ export class PlanManager extends EventEmitter {
       modal.addEventListener('click', async (e) => {
         if (e.target.matches('[data-action="setup-ai"]')) {
           modal.remove();
-          // LLM configuration removed - using server-side AI
-          const config = null;
-          if (config) {
-            // Re-initialize the PDF analyzer with new config
-            this.pdfAnalyzer.initializeLLM();
+          // Trigger local LLM configuration
+          const configured = await this.pdfAnalyzer.offerLLMConfiguration();
+          if (configured) {
             resolve(true);
           } else {
             resolve(false);

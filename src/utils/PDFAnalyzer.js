@@ -1,10 +1,18 @@
 // PDF Analysis utility for extracting health plan data from SBC documents
 import { serverlessLLM } from './ServerlessLLMClient.js';
+import { LLMAssistant } from './LLMAssistant.js';
+import { EnvConfig } from './EnvConfig.js';
 
 export class PDFAnalyzer {
   constructor() {
     this.isInitialized = false;
-    // LLM functionality moved to server-side
+    this.localLLM = new LLMAssistant();
+    this.initializeLLMMode();
+  }
+
+  async initializeLLMMode() {
+    const mode = await EnvConfig.getLLMMode();
+    console.log(`🔧 PDFAnalyzer initialized in ${mode} mode`);
   }
 
 
@@ -134,28 +142,48 @@ export class PDFAnalyzer {
     let llmData = null;
     let regexData = null;
 
-    // Try serverless LLM analysis first
-    console.log('🤖 Using serverless LLM-enhanced analysis...');
-    try {
-      const result = await serverlessLLM.analyzePDF(text, {
-        provider: 'openai',
-        showProgress: (message, type) => {
-          console.log(`📋 ${message}`);
-          // You could emit events here to update UI progress
+    // Try LLM analysis based on configured mode
+    const mode = await EnvConfig.getLLMMode();
+    console.log(`🔧 Using ${mode} mode for LLM analysis...`);
+
+    if (mode === 'local' || mode === 'hybrid') {
+      try {
+        console.log('🤖 Attempting local LLM analysis...');
+        llmData = await this.localLLM.analyzeSBCText(text, fileName);
+        
+        if (llmData) {
+          console.log('✅ Local LLM analysis successful');
+          console.log('🔍 Local LLM extracted data:', llmData);
+        } else {
+          console.log('❌ Local LLM analysis failed or returned no data');
         }
-      });
-      
-      if (result && result.success) {
-        llmData = result.data;
-        console.log('✅ Serverless LLM analysis successful');
-        console.log('🔍 LLM extracted data:', llmData);
-      } else {
-        console.log('❌ LLM analysis failed or returned no data:', result);
+      } catch (error) {
+        console.warn('🤖 Local LLM analysis failed:', error.message);
+        llmData = null;
       }
-    } catch (error) {
-      console.warn('🤖 Serverless LLM analysis failed, falling back to regex:', error.message);
-      
-      console.warn('🤖 Serverless LLM analysis failed, using regex only:', error.message);
+    }
+
+    // Fallback to serverless if in hybrid mode and local failed, or if in server mode
+    if (!llmData && (mode === 'server' || mode === 'hybrid')) {
+      try {
+        console.log('🌐 Using serverless LLM analysis...');
+        const result = await serverlessLLM.analyzePDF(text, {
+          provider: 'openai',
+          showProgress: (message, type) => {
+            console.log(`📋 ${message}`);
+          }
+        });
+        
+        if (result && result.success) {
+          llmData = result.data;
+          console.log('✅ Serverless LLM analysis successful');
+          console.log('🔍 Serverless LLM extracted data:', llmData);
+        } else {
+          console.log('❌ Serverless LLM analysis failed or returned no data:', result);
+        }
+      } catch (error) {
+        console.warn('🌐 Serverless LLM analysis failed:', error.message);
+      }
     }
 
     // Always run regex-based extraction as backup/validation
@@ -399,8 +427,24 @@ export class PDFAnalyzer {
   }
 
   async offerLLMConfiguration() {
-    // LLM configuration moved to server-side
-    return false;
+    const isLocalEnabled = await EnvConfig.isLocalLLMEnabled();
+    if (!isLocalEnabled) {
+      console.log('🔒 LLM configuration not available in server mode');
+      return false;
+    }
+
+    try {
+      const result = await LLMAssistant.showConfigurationModal();
+      if (result && result !== 'system_defaults') {
+        // Reconfigure local LLM with new settings
+        this.localLLM.configure(result.apiKey, result.provider);
+        return true;
+      }
+      return !!result; // true if system defaults were used
+    } catch (error) {
+      console.error('LLM configuration failed:', error);
+      return false;
+    }
   }
 
   extractPlanName(text) {

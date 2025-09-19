@@ -3,6 +3,8 @@ import { EventEmitter } from '../utils/EventEmitter.js';
 import { ChartManager } from './ChartManager.js';
 import { DataManager } from '../utils/DataManager.js';
 import { serverlessLLM } from '../utils/ServerlessLLMClient.js';
+import { LLMAssistant } from '../utils/LLMAssistant.js';
+import { EnvConfig } from '../utils/EnvConfig.js';
 import { WarningBanner } from './WarningBanner.js';
 
 export class ResultsManager extends EventEmitter {
@@ -13,7 +15,7 @@ export class ResultsManager extends EventEmitter {
     this.chartManager = new ChartManager();
     this.llmInsights = null;
     this.calculator = null; // Will be set by App.js
-    // LLM functionality moved to server-side
+    this.localLLM = new LLMAssistant(); // For local mode insights
   }
 
 
@@ -277,7 +279,8 @@ export class ResultsManager extends EventEmitter {
       // Get family data and plan data for context
       this.emit('requestFamilyData', async (familyData) => {
         this.emit('requestPlanData', async (planData) => {
-          console.log('🤖 Generating serverless AI insights for comparison...');
+          const mode = await EnvConfig.getLLMMode();
+          console.log(`🤖 Generating AI insights in ${mode} mode...`);
           
           // Show progress indicator
           const progressContainer = document.getElementById('llm-insights-container');
@@ -285,37 +288,66 @@ export class ResultsManager extends EventEmitter {
             progressContainer.innerHTML = `
               <div class="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
                 <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
-                <span class="text-blue-700">Generating AI insights...</span>
+                <span class="text-blue-700">🤖 Generating AI insights...</span>
               </div>
             `;
           }
           
-          try {
-            // Try serverless insights first
-            const result = await serverlessLLM.generateInsights(planData, familyData, this.results, {
-              provider: 'openai',
-              showProgress: (message, type) => {
-                console.log(`💡 ${message}`);
-                if (progressContainer) {
-                  const isError = type === 'error';
-                  progressContainer.innerHTML = `
-                    <div class="flex items-center justify-center p-4 ${isError ? 'bg-red-50' : 'bg-blue-50'} rounded-lg">
-                      ${!isError ? '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>' : ''}
-                      <span class="${isError ? 'text-red-700' : 'text-blue-700'}">${message}</span>
-                    </div>
-                  `;
-                }
+          let insights = null;
+          
+          // Try local LLM first if in local or hybrid mode
+          if (mode === 'local' || mode === 'hybrid') {
+            try {
+              console.log('🏠 Attempting local LLM insights generation...');
+              insights = await this.localLLM.generateComparisonInsights(this.results, familyData);
+              
+              if (insights) {
+                console.log('✅ Local LLM insights generated successfully');
+                this.llmInsights = insights;
+              } else {
+                console.log('❌ Local LLM returned no insights');
               }
-            });
-            
-            if (result && result.success) {
-              this.llmInsights = result.data;
-              console.log('✅ Serverless AI insights generated');
+            } catch (error) {
+              console.warn('🏠 Local LLM insights failed:', error.message);
+              insights = null;
             }
-          } catch (error) {
-            console.warn('🤖 Serverless insights failed, trying fallback:', error.message);
-            
-            console.error('❌ Serverless insights failed:', error);
+          }
+          
+          // Fallback to serverless if in server mode or if local failed in hybrid mode
+          if (!insights && (mode === 'server' || mode === 'hybrid')) {
+            try {
+              console.log('🌐 Attempting serverless LLM insights generation...');
+              const result = await serverlessLLM.generateInsights(planData, familyData, this.results, {
+                provider: 'openai',
+                showProgress: (message, type) => {
+                  console.log(`💡 ${message}`);
+                  if (progressContainer) {
+                    const isError = type === 'error';
+                    progressContainer.innerHTML = `
+                      <div class="flex items-center justify-center p-4 ${isError ? 'bg-red-50' : 'bg-blue-50'} rounded-lg">
+                        ${!isError ? '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>' : ''}
+                        <span class="${isError ? 'text-red-700' : 'text-blue-700'}">${message}</span>
+                      </div>
+                    `;
+                  }
+                }
+              });
+              
+              if (result && result.success) {
+                this.llmInsights = result.data;
+                insights = result.data;
+                console.log('✅ Serverless AI insights generated successfully');
+              }
+            } catch (error) {
+              console.warn('🌐 Serverless insights failed:', error.message);
+            }
+          }
+          
+          // Handle results
+          if (insights) {
+            console.log('✅ AI insights generated successfully');
+          } else {
+            console.error('❌ All AI insights generation methods failed');
             if (progressContainer) {
               progressContainer.innerHTML = `
                 <div class="p-4 bg-yellow-50 rounded-lg">

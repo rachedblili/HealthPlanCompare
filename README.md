@@ -25,7 +25,7 @@ A modern, open-source web application for comparing health insurance plans based
 
 ## 🚀 Getting Started
 
-### Option 1: Simple Local Server
+### Option 1: Quick Start (Server Mode - Recommended)
 ```bash
 # Clone the repository
 git clone https://github.com/rachedblili/HealthPlanCompare.git
@@ -37,22 +37,33 @@ python -m http.server 8000
 # Open in your browser
 open http://localhost:8000/public/
 ```
+**Features Available:** All functionality including AI-powered PDF analysis (uses secure server-side processing)
 
-### Option 2: Node.js Development
+### Option 2: Local Development Mode (Advanced Users)
 ```bash
-# Install Node.js dependencies (optional)
-npm install
+# Clone and setup
+git clone https://github.com/rachedblili/HealthPlanCompare.git
+cd HealthPlanCompare
 
-# Start development server
-npm run dev
+# Copy environment template
+cp .env.example .env
+
+# Edit .env file to enable local mode (see Configuration section below)
+# Set ENABLE_LOCAL_LLM=true and add your API keys
+
+# Start server
+python -m http.server 8000
 ```
+**Features Available:** All functionality with direct browser-to-AI API calls
 
-### Option 3: Static Hosting
+### Option 3: Static Hosting (Production)
 Deploy the entire folder to any static hosting service:
-- GitHub Pages
+- GitHub Pages  
 - Netlify
-- Vercel
+- Vercel (recommended - includes serverless AI functions)
 - AWS S3 + CloudFront
+
+**⚠️ Security Note:** Always deploy with `ENABLE_LOCAL_LLM=false` (default) to protect API keys
 
 ## 📖 How to Use
 
@@ -121,6 +132,41 @@ Deploy the entire folder to any static hosting service:
 ```
 
 ## 🔧 Configuration
+
+### LLM Mode Configuration
+
+The tool supports two operating modes for AI-powered PDF analysis:
+
+#### Server Mode (Default - Secure)
+```bash
+# .env file settings (or leave file empty)
+LLM_MODE=server
+ENABLE_LOCAL_LLM=false
+```
+- **Use case**: Production deployments, public websites
+- **Security**: API keys stay on server, never exposed to browsers
+- **Features**: Full AI functionality via secure serverless functions
+
+#### Local Mode (Development Only)
+```bash
+# .env file settings
+LLM_MODE=local  # or "hybrid" 
+ENABLE_LOCAL_LLM=true
+OPENAI_API_KEY=your_key_here
+# OR
+ANTHROPIC_API_KEY=your_key_here
+```
+- **Use case**: Local development, power users with own API keys
+- **Security**: ⚠️ **API keys exposed in browser** - never use on public websites
+- **Features**: Direct browser-to-AI API calls with configuration UI
+
+#### Hybrid Mode (Best of Both)
+```bash
+LLM_MODE=hybrid
+ENABLE_LOCAL_LLM=true
+```
+- Tries local LLM first, falls back to server mode
+- Good for development with fallback support
 
 ### Service Cost Assumptions
 The tool uses average healthcare costs that can be customized by region:
