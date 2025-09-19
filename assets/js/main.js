@@ -1,6 +1,6 @@
 // Main entry point for Health Plan Comparison Tool
-import { App } from '/src/components/App.js';
-import { StorageManager } from '/src/utils/StorageManager.js';
+import { App } from '../../src/components/App.js';
+import { StorageManager } from '../../src/utils/StorageManager.js';
 
 // Add global error handler
 window.addEventListener('error', (event) => {
