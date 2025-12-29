@@ -2,6 +2,8 @@
 
 A modern, open-source web application for comparing health insurance plans based on your family's actual healthcare usage. Features intelligent PDF analysis of Summary of Benefits and Coverage (SBC) documents and automated plan discovery.
 
+You can try it live, right now by clicking [Here](https://www.strikerit.com/insurance/)
+
 ## 🌟 Features
 
 ### Core Functionality
