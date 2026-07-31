@@ -1,8 +1,8 @@
 // Client-side wrapper for serverless LLM functions with error handling
 export class ServerlessLLMClient {
   constructor() {
-    this.baseURL = window.location.origin; // Use same domain for API calls
-    this.apiPrefix = '/insurance/api'; // Match nginx location path
+    this.baseURL = 'https://health-plan-compare.vercel.app'; // Call Vercel directly to avoid proxying through a shared IP
+    this.apiPrefix = '/api';
     this.retryAttempts = 3;
     this.retryDelay = 1000; // 1 second base delay
   }

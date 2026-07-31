@@ -23,27 +23,38 @@ async function callOpenAI(prompt, model, temperature, maxTokens) {
     throw new Error('OpenAI API key not configured');
   }
 
+  // GPT-5 reasoning models reject `temperature` (other than the default) and
+  // `max_tokens`, requiring `max_completion_tokens` instead.
+  const isReasoningModel = /^gpt-5/.test(model);
+
+  const requestBody = {
+    model: model,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a healthcare cost analysis expert. Provide accurate, helpful information about health insurance plans and costs. Always respond in valid JSON format when requested.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ]
+  };
+
+  if (isReasoningModel) {
+    requestBody.max_completion_tokens = maxTokens;
+  } else {
+    requestBody.temperature = temperature;
+    requestBody.max_tokens = maxTokens;
+  }
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a healthcare cost analysis expert. Provide accurate, helpful information about health insurance plans and costs. Always respond in valid JSON format when requested.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: temperature,
-      max_tokens: maxTokens
-    })
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {

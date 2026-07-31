@@ -31,17 +31,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Check system capacity
-    const capacity = await checkSystemCapacity();
-    if (!capacity.available) {
-      return res.status(503).json({
-        error: 'System busy',
-        type: 'SYSTEM_BUSY',
-        message: 'Our AI analysis system is currently at capacity. Please try again in a few minutes.',
-        estimatedWaitTime: capacity.estimatedWaitTime
-      });
-    }
-
     const { pdfText, provider = 'openai' } = req.body;
     
     if (!pdfText) {
@@ -141,29 +130,4 @@ ${pdfText}`;
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
-}
-
-// Check system capacity based on current load
-async function checkSystemCapacity() {
-  // Simple capacity check - in production, this could check:
-  // - Current active requests
-  // - Response times
-  // - Error rates
-  // - Available compute resources
-  
-  const now = new Date();
-  const currentHour = now.getHours();
-  
-  // Simulate peak hours (9 AM - 5 PM) having higher load
-  const isPeakHour = currentHour >= 9 && currentHour <= 17;
-  const baseCapacity = isPeakHour ? 0.8 : 0.95; // 80% or 95% available
-  
-  // Add some randomness to simulate real load
-  const currentLoad = Math.random();
-  const available = currentLoad < baseCapacity;
-  
-  return {
-    available,
-    estimatedWaitTime: available ? 0 : Math.floor(Math.random() * 300) + 60 // 1-5 minutes
-  };
 }

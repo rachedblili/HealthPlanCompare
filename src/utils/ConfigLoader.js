@@ -1,6 +1,10 @@
 // Configuration Loader - reads from .env file for local development
 export class ConfigLoader {
   static async loadConfig() {
+    if (!['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+      return {};
+    }
+
     try {
       const response = await fetch('/.env');
       if (!response.ok) {
